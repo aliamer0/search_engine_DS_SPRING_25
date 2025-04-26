@@ -30,6 +30,8 @@ def crawl_page(url):
     text = extract_text(html)
     links = extract_links(html, url)
     report_to_master(url, text, links)
+    return url, text, links  # <-- Added return here!
+
 
 # Example run
 if __name__ == "__main__":
