@@ -8,9 +8,15 @@ from indexer import add_document  # Import add_document function from indexer.py
 task_queue = Queue()
 data_queue = Queue()  # Queue to hold crawled data for the indexer
 
+# Global set to track visited URLs
+visited_urls = set()
+
+# Maximum depth of crawling
+MAX_DEPTH = 3
+
 # List of seed URLs (normally this could be loaded from a file or database)
 seed_urls = [
-    "https://en.wikipedia.org/wiki/SS_Normandie",
+    #"https://en.wikipedia.org/wiki/SS_Normandie",
     "https://en.wikipedia.org/wiki/Python_(programming_language)",
     "https://en.wikipedia.org/wiki/Web_crawler"
 ]
@@ -18,34 +24,42 @@ seed_urls = [
 # Load seed URLs into the task queue
 def load_seed_urls():
     for url in seed_urls:
-        task_queue.put(url)
+        task_queue.put((url, 0))  # Add URL along with depth
         print(f"[Master] Seed URL added to queue: {url}")
 
 # Simulate sending tasks to Crawler Node
 def assign_tasks():
     while not task_queue.empty():
-        url = task_queue.get()
+        url, depth = task_queue.get()
         print(f"[Master] Assigned task: Crawl {url}")
         # Here you would normally send this URL to a real Crawler Node over network
         # For simplicity, we'll simulate calling the `crawl_data` method from the crawler.
-        crawl_data(url)
+        crawl_data(url, depth)
         time.sleep(1)  # Simulate some delay
     print("[Master] No more tasks in the queue.")
 
 # Simulate a Crawler Node receiving tasks and returning crawled data
-def crawl_data(url):
-    print(f"[Crawler] Crawling {url}...")
+def crawl_data(url, depth):
+    if depth > MAX_DEPTH:
+        return  # Stop if the max depth is exceeded
+
+    if url in visited_urls:
+        return  # Skip if URL has already been visited
+
+    print(f"[Crawler] Crawling {url} at depth {depth}...")
+    visited_urls.add(url)  # Mark URL as visited
+
     # Simulate parsing and extracting content (replace with actual crawler code)
     content = f"Content of {url}"  # Simulated content
     links = [f"{url}/1", f"{url}/2", f"{url}/3"]  # Simulated links
 
-    # Ensure links are added to the task queue for crawling (important!)
-    for link in links:
-        task_queue.put(link)  # Add extracted links to the task queue
-
     # Report the crawled data to the Master (through data_queue)
     data_queue.put((url, content, links))
     print(f"[Crawler] Data sent to Master for URL: {url}")
+
+    # Ensure links are added to the task queue for crawling (important!)
+    for link in links:
+        task_queue.put((link, depth + 1))  # Add link with incremented depth
 
 # Simulate basic monitoring of Crawler Nodes
 def monitor_crawlers():
