@@ -4,20 +4,24 @@ from indexer import add_document, search_keyword
 
 def crawler_process(queue):
     url = "https://en.wikipedia.org/wiki/SS_Normandie"
+
     # crawl the page
     response = crawl_page(url)
     if response:
         url, text, links = response
         queue.put((url, text))  # Send it to indexer
 
-def indexer_process(queue):
-    while True:
+def indexer_process(queue, max_urls=10):
+    processed_count = 0
+    while processed_count < max_urls:
         if not queue.empty():
             url, text = queue.get()
             add_document(url, text)
-            # Optional: after indexing, you could immediately search
             search_keyword("ship")
             search_keyword("UK")
+            processed_count += 1
+    print("Indexer process finished processing the required number of URLs.")
+
 
 if __name__ == "__main__":
     q = Queue()
