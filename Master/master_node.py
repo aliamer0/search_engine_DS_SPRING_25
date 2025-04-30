@@ -1,2 +1,103 @@
-urlList = []
+from mpi4py import MPI
+from Queue.task_queue import app
+import time
+import logging
+from UI.ui import get_urls
+from Queue.tasks import distribute_url
+import redis
 
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - Master - %(levelname)s - %(message)s')
+
+def master_process():
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+    status = MPI.Status()
+
+    logging.info(f"Master node started with {rank} of {size}")
+
+    # Initialization of task queue
+    app.start()
+    # Implementation of database connection
+
+    r = redis.StrictRedis(host = "localhost", port=6379, db = 0)
+    r_results = redis.StrictRedis(host = "localhost", port=6379, db = 1)
+
+    # dividing the size through crawerls, indexers, and master
+    crawler_nodes = size // 2
+    indexer_nodes = size - crawler_nodes
+
+    total_nodes = indexer_nodes + crawler_nodes
+    if total_nodes == size:
+        indexer_nodes -= 1
+
+    if crawler_nodes <= 0 or indexer_nodes <= 0:
+        logging.error("""Not enough nodes to run crawler and indexer.
+        Need at least 3 nodes (1 master, 1 crawler, 1 indexer)""")
+        return
+
+    active_crawler_nodes = list(range(1, 1 + crawler_nodes)) # Ranks for crawler nodes (assuming rank 0 is master)
+    active_indexer_nodes = list(range(1 + crawler_nodes, size)) # Ranks for indexer nodes
+
+    logging.info(f"Active Crawler Nodes: {active_crawler_nodes}")
+    logging.info(f"Active Indexer Nodes: {active_indexer_nodes}")
+
+    seed_urls = get_urls()
+    urls_to_crawl_queue = seed_urls
+
+    task_count = 0
+    crawler_tasks_assigned = 0
+
+
+    for url in seed_urls:
+        distribute_url.delay(url)
+        logging.info(f"Master added this URL: {url} to the queue!")
+
+
+    while (r.llen('celery') > 0) or (crawler_tasks_assigned > 0):
+        if crawler_tasks_assigned > 0:
+            if comm.iprobe(source = MPI.ANY_SOURCE, tag = MPI.ANY_TAG, status = status):
+                message_source = status.Get_source()
+                message_tag = status.Get_tag()
+                message_data = comm.recv(source=message_source, tag=message_tag)
+
+                if message_tag == 1:
+                    crawler_tasks_assigned -= 1
+                    new_urls = message_data
+
+                    if new_urls:
+                        for url in new_urls:
+                            distribute_url.delay(url)
+                        logging.info(f"""Master received URLs from Crawler {message_source},
+                        URLs added to queue: {len(new_urls)},
+                        URLs in the queue: {r.llen('celery')},
+                        Tasks assigned: {crawler_tasks_assigned}""")
+
+                    elif message_tag == 99:
+                        logging.info(f"""Crawler {message_source},
+                        status: {message_data}""")
+
+                    elif message_tag == 999:
+                        logging.error(f"""reported {message_source}
+                        reported error: {message_data}""")
+
+                        crawler_tasks_assigned -= 1
+
+    while (r.llen('celery') > 0) and (crawler_tasks_assigned < crawler_nodes):
+
+        url_to_crawl = r.lpop("celery")
+        if url_to_crawl:
+            url_to_crawl = url_to_crawl.decode("utf-8")
+
+        available_crawler_rank = active_crawler_nodes[crawler_tasks_assigned % len(active_crawler_nodes)]
+
+        task_id = task_count
+        task_count += 1
+        comm.send(url_to_crawl, dest = available_crawler_rank, tag = 0)
+        crawler_tasks_assigned += 1
+        logging.info(f"""Master assigned task {task_id} (crawl {url_to_crawl})
+        to Crawler {available_crawler_rank}, Tasks assigned: {crawler_tasks_assigned}""")
+
+
+    logging.info("""Master node finished URL distribution. Waiting for crawlers to com""")
