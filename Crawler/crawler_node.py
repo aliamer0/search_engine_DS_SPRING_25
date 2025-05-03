@@ -8,6 +8,8 @@ import traceback
 import requests
 from urllib.parse import urljoin, urlparse
 import urllib.robotparser as robotparser
+import json
+from bs4 import BeautifulSoup
 
 def crawler_process():
 
@@ -54,8 +56,13 @@ def crawler_process():
                 soup = BeautifulSoup(html, "html.parser")
                 links = []
                 for a_tag in soup.find_all("a", href=True):
-                    absolute_url = urljoin(url, a_tag["href"])
+                    absolute_url = urljoin(url_to_crawl, a_tag["href"])
                     links.append(absolute_url)
+
+                sql = "INSERT INTO crawled_pages (URL, html, links, retrieved) VALUES (%s, %s, %s, %s)"
+                values = (url_to_crawl, html, json.dumps(links), False)
+                cursor.execute(sql, values)
+                conn.commit()
                 
                 extracted_urls = links
                 logging.info(f"Crawler {rank} crawled {url_to_crawl}, extracted {len(extracted_urls)} URLS.")

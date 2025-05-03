@@ -2,6 +2,7 @@ from mpi4py import MPI
 import time
 import logging
 from Assets.db import conn, cursor
+import Indexer.whoosh_indexer
 
 logging.basicConfig(level = logging.INFO, format= "%(asctime)s - Indexer - %(levelname)s - %(message)s")
 
@@ -40,7 +41,7 @@ def indexer_process():
             try:
 
                 #indexing
-
+                Indexer.whoosh_indexer.add_document(url, content_to_index)
                 time.sleep(1)
 
                 logging.info(f"Indexer {rank} indexed content from Crawler {source_rank}.")
