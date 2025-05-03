@@ -1,7 +1,7 @@
 from mpi4py import MPI
 import time
 import logging
-from Assets.db import conn, cursor
+from Assets.db import conn
 import Indexer.whoosh_indexer
 
 logging.basicConfig(level = logging.INFO, format= "%(asctime)s - Indexer - %(levelname)s - %(message)s")
@@ -11,6 +11,7 @@ def indexer_process():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
+    cursor = conn.cursor()
 
     if (rank > (size//2)):
         logging.info(f"Indexer node started with rank {rank} of {size}")

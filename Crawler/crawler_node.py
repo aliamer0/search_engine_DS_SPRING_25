@@ -1,7 +1,7 @@
 from mpi4py import MPI
 import time
 import logging
-from Assets.db import conn, cursor
+from Assets.db import conn
 import json
 import ast
 import traceback
@@ -17,7 +17,7 @@ def crawler_process():
     rank = comm.Get_rank()
     size = comm.Get_size()
     crawler_nodes = size // 2
-
+    cursor = conn.cursor()
 
     MPI_TIMEOUT = 10
     

@@ -5,7 +5,7 @@ from UI.ui import get_urls
 import redis
 from Crawler.crawler_node import crawler_process
 from Indexer.indexer_node import indexer_process
-from Assets.db import conn, cursor
+from Assets.db import conn
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - Master - %(levelname)s - %(message)s')
 
@@ -14,7 +14,7 @@ def master_process():
     rank = comm.Get_rank()
     size = comm.Get_size()
     status = MPI.Status()
-
+    cursor = conn.cursor()
 
     if (rank == 0):
         logging.info(f"Master node started with {rank} of {size}")
