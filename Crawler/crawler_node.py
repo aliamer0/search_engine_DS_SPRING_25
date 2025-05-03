@@ -1,16 +1,13 @@
 from mpi4py import MPI
 import time
 import logging
-from scrapy.crawler import CrawlerProcess
-from scrapy.utils.project import get_project_settings
-from Crawler.spiders.distributed_spider import DistributedSpider
 from Assets.db import conn, cursor
 import json
 import ast
 import traceback
-import threading
-
-
+import requests
+from urllib.parse import urljoin, urlparse
+import urllib.robotparser as robotparser
 
 def crawler_process():
 
@@ -46,18 +43,21 @@ def crawler_process():
             
             start_time = time.time()
             try:
-                process = CrawlerProcess(get_project_settings())
-                process.crawl(DistributedSpider, start_url = url_to_crawl)
-                process.start()
-                process.stop()
-                thread = threading.Thread(target=worker)
-                cursor.execute(sql, (url_to_crawl, ))
-                result = cursor.fetchone()
-                if result:
-                    links, html = result
+                response = requests.get(url_to_crawl)
+                if response.status_code == 200:
+                    html = response.text
+                else:
+                    logging.info("Crawler {rank} Failed to crawl: {url_to_crawl} ... Skipping.")
+                    comm.send(rank, dest=0, tag=99)
+                    continue
 
+                soup = BeautifulSoup(html, "html.parser")
+                links = []
+                for a_tag in soup.find_all("a", href=True):
+                    absolute_url = urljoin(url, a_tag["href"])
+                    links.append(absolute_url)
                 
-                extracted_urls = ast.literal_eval(links) if links else []
+                extracted_urls = links
                 logging.info(f"Crawler {rank} crawled {url_to_crawl}, extracted {len(extracted_urls)} URLS.")
                 comm.send(extracted_urls, dest=0, tag = 1)
 
@@ -68,12 +68,8 @@ def crawler_process():
                     indexer = indexers.pop()
                     comm.send((url_to_crawl,html), dest = indexer, tag = 2)
 
-
-
             except Exception as e:
                 error_message = f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"
                 logging.error(f"crawler {rank} error crawling {url_to_crawl}: {str(e)}")
                 comm.send((url_to_crawl, error_message, rank), dest=0, tag=999)
- 
-
 
