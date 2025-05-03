@@ -1,9 +1,10 @@
 from celery import Celery
+
 # Configure Celery
 app = Celery('Search Engine',
              broker='redis://localhost:6379/0',
              backend='redis://localhost:6379/1',
-             include=['tasks'])
+             include=['Queue.tasks'])
 
 # Optional configuration
 app.conf.update(
@@ -15,8 +16,7 @@ app.conf.update(
     task_track_started=True,
     task_time_limit=300,
     task_soft_time_limit=240,
-)
-
-app.conf.task_queues = (
-    Queue("urls"),
+    worker_max_tasks_per_child=100,
+    task_acks_late=True,
+    broker_transport_options={'visibility_timeout': 3600},
 )

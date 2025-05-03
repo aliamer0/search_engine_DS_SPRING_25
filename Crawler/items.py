@@ -1,12 +1,7 @@
-# Define here the models for your scraped items
-#
-# See documentation in:
-# https://docs.scrapy.org/en/latest/topics/items.html
-
 import scrapy
 
-
 class CrawlerItem(scrapy.Item):
-    # define the fields for your item here like:
-    # name = scrapy.Field()
-    pass
+    # Define the fields for the item
+    url = scrapy.Field()          # The URL of the page
+    links = scrapy.Field()        # List of extracted links from the page
+    html = scrapy.Field()         # The HTML content of the page
