@@ -1,0 +1,6 @@
+requests
+redis
+whoosh
+celery
+mpi4py
+beautifulsoup4

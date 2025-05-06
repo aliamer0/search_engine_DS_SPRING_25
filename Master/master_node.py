@@ -148,7 +148,6 @@ def master_process():
                 crawler_tasks_assigned += 1
                 logging.info(f"""Master assigned task {task_id} (crawl {url_to_crawl})
                 to Crawler {available_crawler_rank}, Tasks assigned: {crawler_tasks_assigned}""")
-                time.sleep(2)
 
         logging.info("""Master node finished URL distribution. Waiting for crawlers to complete...""")
         for crawler_rank in active_crawler_nodes:

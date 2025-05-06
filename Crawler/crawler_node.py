@@ -11,6 +11,8 @@ import urllib.robotparser as robotparser
 import json
 from bs4 import BeautifulSoup
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - Crawler - %(levelname)s - %(message)s')
+
 def crawler_process():
 
     comm = MPI.COMM_WORLD

@@ -32,6 +32,8 @@ def indexer_process():
                     if retrieved == True:
                         comm.send(rank, dest=0, tag=99)
                         continue
+                else:
+                    cursor.fetchall()
 
             if content_to_index is None:
                 logging.info(f"Indexer {rank} received shutdown signal. Exiting")
@@ -43,7 +45,6 @@ def indexer_process():
 
                 #indexing
                 Indexer.whoosh_indexer.add_document(url, content_to_index)
-                time.sleep(1)
 
                 logging.info(f"Indexer {rank} indexed content from Crawler {source_rank}.")
                 comm.send(rank, dest = 0, tag = 99)
