@@ -11,7 +11,7 @@ def indexer_process():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
-    cursor = conn.cursor()
+    cursor = conn.cursor(buffered=True)
 
     if (rank > (size//2)):
         logging.info(f"Indexer node started with rank {rank} of {size}")
@@ -55,4 +55,4 @@ def indexer_process():
             except Exception as e:
                 logging.error(f"Indexer {rank} error indexing content from Crawler {source_rank}: {e}")
                 comm.send(f"Indexer {rank} - Error indexing: {e}", dest=0, tag=999)
-
+        cursor.close()
