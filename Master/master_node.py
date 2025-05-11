@@ -26,15 +26,8 @@ def master_process():
 
         r = redis.StrictRedis(host = "localhost", port=6379, db = 0)
         r_results = redis.StrictRedis(host = "localhost", port=6379, db = 1)
-        r.ping()  # Ensure the connection is live
         r.select(0)  # Explicitly select the correct DB
 
-        try:
-            r = redis.StrictRedis(host="localhost", port=6379, db=0)
-            r.ping()  # This will raise an exception if connection fails
-            print("Redis connection successful")
-        except redis.ConnectionError:
-            print("Failed to connect to Redis")
 
         # dividing the size through crawerls, indexers, and master
         crawler_nodes = size // 2
@@ -63,11 +56,6 @@ def master_process():
 
         print("seed urls:", seed_urls)
         for url in seed_urls:
-            cursor.execute("SELECT 1 FROM crawled_pages WHERE url=%s", (url,))
-            _ = cursor.fetchone()
-            if _:
-                logging.info(f"URL {url} already crawled, skipping.")
-                continue
             try:
                 r.rpush('urls', url.encode('utf-8'))
             except Exception as e:
@@ -86,11 +74,6 @@ def master_process():
                         
                         if new_urls:
                             for url in new_urls:
-                                cursor.execute("SELECT 1 FROM crawled_pages WHERE url=%s", (url,))
-                                _ = cursor.fetchone()
-                                if _:
-                                    logging.info(f"URL {url} already crawled, skipping.")
-                                    continue
                                 try:
                                     r.rpush('urls', url.encode('utf-8'))
                                 except Exception as e:
