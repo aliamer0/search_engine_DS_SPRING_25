@@ -24,8 +24,9 @@ def master_process():
         #app.start()
         # Implementation of database connection
 
-        r = redis.StrictRedis(host = "localhost", port=6379, db = 0)
-        r_results = redis.StrictRedis(host = "localhost", port=6379, db = 1)
+        r = redis.StrictRedis(host="197.53.138.226", port=6379, db=0)
+        r_results = redis.StrictRedis(host="197.53.138.226", port=6379, db=1)
+
         r.select(0)  # Explicitly select the correct DB
 
 
