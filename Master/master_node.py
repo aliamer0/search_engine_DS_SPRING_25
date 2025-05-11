@@ -6,6 +6,7 @@ import redis
 from Crawler.crawler_node import crawler_process
 from Indexer.indexer_node import indexer_process
 from Assets.db import conn
+import sys
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - Master - %(levelname)s - %(message)s')
 
@@ -54,7 +55,8 @@ def master_process():
         logging.info(f"Active Crawler Nodes: {active_crawler_nodes}")
         logging.info(f"Active Indexer Nodes: {active_indexer_nodes}")
 
-        seed_urls = get_urls()
+        seed_urls = sys.argv[1] if len(sys.argv) > 1 else ""
+        seed_urls = seed_urls.split(',')
 
         task_count = 0
         crawler_tasks_assigned = 0

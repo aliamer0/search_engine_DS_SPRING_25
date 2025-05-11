@@ -44,13 +44,18 @@ class Ui_MainWindow(object):
         self.label.setText(_translate("MainWindow", "Enter the URL"))
 
     def start_crawling(self):
-        url = self.lineEdit.text()  # Get the URL from the text box
-        if url:
-            # Here you can call your subprocess to start the crawling, indexing, and master process
-            # Replace the command with your own path and parameters
-            subprocess.Popen(["mpiexec", "-n", "6", "python", "-m", "Master.master_node", url])
+        urls = self.lineEdit.text()  # Get the text from the input box
+        if urls:
+            # Split the input into a list of URLs
+            url_list = [url.strip() for url in urls.split(',')]  # Split by commas and remove extra spaces
+            # Convert the list of URLs to a single string (we'll join them with commas for simplicity)
+            url_list_str = ','.join(url_list)
+            
+            # Start the master process, passing the list of URLs as a command-line argument
+            subprocess.Popen(["gnome-terminal", "--", "mpiexec", "-n", "6", "python", "-m", "Master.master_node", url_list_str])
         else:
-            QtWidgets.QMessageBox.warning(None, "Input Error", "Please enter a URL to start the process.")
+            QtWidgets.QMessageBox.warning(None, "Input Error", "Please enter at least one URL to start the process.")
+
 
 
 if __name__ == "__main__":
