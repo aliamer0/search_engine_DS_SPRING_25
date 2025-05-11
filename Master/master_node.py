@@ -1,7 +1,6 @@
 from mpi4py import MPI
 import time
 import logging
-from UI.ui import get_urls
 import redis
 from Crawler.crawler_node import crawler_process
 from Indexer.indexer_node import indexer_process
