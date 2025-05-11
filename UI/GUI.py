@@ -1,5 +1,6 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 import subprocess
+import platform
 
 
 
@@ -44,18 +45,27 @@ class Ui_MainWindow(object):
         self.label.setText(_translate("MainWindow", "Enter the URL"))
 
     def start_crawling(self):
-        urls = self.lineEdit.text()  # Get the text from the input box
+        urls = self.lineEdit.text()
         if urls:
-            # Split the input into a list of URLs
-            url_list = [url.strip() for url in urls.split(',')]  # Split by commas and remove extra spaces
-            # Convert the list of URLs to a single string (we'll join them with commas for simplicity)
+            url_list = [url.strip() for url in urls.split(',')]
             url_list_str = ','.join(url_list)
-            
-            # Start the master process, passing the list of URLs as a command-line argument
-            subprocess.Popen(["gnome-terminal", "--", "mpiexec", "-n", "6", "python", "-m", "Master.master_node", url_list_str])
+
+            system_platform = platform.system()
+
+            if system_platform == "Linux":
+                subprocess.Popen(["gnome-terminal", "--", "mpiexec", "-n", "6", "python", "-m", "Master.master_node", url_list_str])
+
+            elif system_platform == "Windows":
+                subprocess.Popen(["cmd.exe", "/k", f"mpiexec -n 6 python -m Master.master_node {url_list_str}"])
+
+            elif system_platform == "Darwin":  # macOS
+                subprocess.Popen(["open", "-a", "Terminal.app", f"mpiexec -n 6 python -m Master.master_node {url_list_str}"])
+
+            else:
+                QtWidgets.QMessageBox.warning(None, "Unsupported OS", f"Your OS ({system_platform}) is not supported for this operation.")
+        
         else:
             QtWidgets.QMessageBox.warning(None, "Input Error", "Please enter at least one URL to start the process.")
-
 
 
 if __name__ == "__main__":
