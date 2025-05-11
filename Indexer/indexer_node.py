@@ -53,6 +53,7 @@ def indexer_process():
 
 
             except Exception as e:
+                error_message = f"{type(e).__name__}: {str(e)}"
                 logging.error(f"Indexer {rank} error indexing content from Crawler {source_rank}: {e}")
-                comm.send(f"Indexer {rank} - Error indexing: {e}", dest=0, tag=999)
+                comm.send((rank, error_message), dest=0, tag=999)
         cursor.close()

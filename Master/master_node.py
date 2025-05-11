@@ -99,6 +99,15 @@ def master_process():
                             URLs in the queue: {r.llen('urls')},
                             Tasks assigned: {crawler_tasks_assigned}""")
 
+                    #timeouts of crawler
+                    elif message_tag == 9:
+                        rank, url = message_data
+                        logging.info(f"Crawler {rank} timedout reassigning ...")
+                        try:
+                            r.rpush('urls', url.encode('utf-8'))
+                        except Exception as e:
+                            logging.error(f"Redis direct push failed: {str(e)}")
+                        active_crawler_nodes.add(rank)                        
 
                     elif message_tag == 99:
                         if message_data in range(1, crawler_nodes+1):
@@ -124,8 +133,11 @@ def master_process():
 
 
                         elif message_source in (crawler_nodes+1, size):
+                            rank, error = message_data
                             logging.error(f"""Indexer {message_source}
                             reported error: error""")
+                            active_indexer_nodes.add(rank)
+
 
                             
                         crawler_tasks_assigned -= 1
@@ -133,9 +145,6 @@ def master_process():
             while (r.llen('urls') > 0) and active_crawler_nodes:
 
                 url_to_crawl = r.lpop("urls")
-                if not url_to_crawl:
-                    print("I am here")
-                    continue
                 url_to_crawl = url_to_crawl.decode("utf-8")
                 
                 available_crawler_rank = active_crawler_nodes.pop()

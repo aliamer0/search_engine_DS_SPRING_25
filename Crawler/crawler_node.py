@@ -73,18 +73,28 @@ def crawler_process():
 
                 headers = {'User-Agent': user_agent}
                 try:
-                    response = requests.get(url_to_crawl, headers=headers, timeout=10)
+                    response = requests.get(url_to_crawl, headers=headers, timeout=4)
                     response.raise_for_status()
-                except requests.exceptions.RequestException as e:
-                    logging.warning(f"Crawler {rank}: Failed to fetch {url_to_crawl} due to {type(e).__name__}: {e}")
-                    comm.send(rank, dest=0, tag=99)
+
+                except requests.exceptions.Timeout as e:
+                    logging.warning(f"Crawler {rank}: Timeout while fetching {url_to_crawl}: {e}")
+                    comm.send((rank,url_to_crawl), dest=0, tag=9)
                     continue
+                
+                except requests.exceptions.RequestException as e:
+                    error_message = f"{type(e).__name__}: {str(e)}"
+                    logging.warning(f"Crawler {rank}: Failed to fetch {url_to_crawl} due to {type(e).__name__}: {e}")
+                    comm.send((url_to_crawl, error_message, rank), dest=0, tag=999)
+                    continue
+
+                
                 
                 if response.status_code == 200:
                     html = response.text
                 else:
+                    error_message = f"{type(e).__name__}: {str(e)}"
                     logging.info(f"Crawler {rank} Failed to crawl: {url_to_crawl} ... Status: {response.status_code}")
-                    comm.send(rank, dest=0, tag=99)
+                    comm.send((url_to_crawl, error_message, rank), dest=0, tag=999)
                     continue
 
 
@@ -93,8 +103,10 @@ def crawler_process():
                 for a_tag in soup.find_all("a", href=True):
                     href = a_tag["href"]
                     parsed_href = urlparse(href)
-                    
-                    if parsed_href.netloc == "":  # it's a relative URL
+                    if href.startswith("//"):
+                        absolute_url = f"{parsed_url.scheme}:{href}"
+                        links.append(absolute_url)
+                    elif parsed_href.netloc == "":  # it's a relative URL
                         absolute_url = urljoin(url_to_crawl, href)
                         links.append(absolute_url)
                     else:  # it's an absolute URL
@@ -121,7 +133,7 @@ def crawler_process():
 
 
             except Exception as e:
-                error_message = f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"
+                error_message = f"{type(e).__name__}: {str(e)}"
                 logging.error(f"crawler {rank} error crawling {url_to_crawl}: {str(e)}")
                 comm.send((url_to_crawl, error_message, rank), dest=0, tag=999)
 

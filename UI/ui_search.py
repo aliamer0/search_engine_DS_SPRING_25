@@ -6,7 +6,6 @@ def main():
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # Add search command
     search_parser = subparsers.add_parser("search", help="Search the index for a keyword")
     search_parser.add_argument("keyword", type=str, help="Keyword to search in the index")
 
