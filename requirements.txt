@@ -4,3 +4,5 @@ whoosh
 celery
 mpi4py
 beautifulsoup4
+psycopg2
+mysql.connector

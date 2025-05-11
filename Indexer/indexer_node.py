@@ -11,7 +11,7 @@ def indexer_process():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
-    cursor = conn.cursor(buffered=True)
+    cursor = conn.cursor()
 
     if (rank > (size//2)):
         logging.info(f"Indexer node started with rank {rank} of {size}")
