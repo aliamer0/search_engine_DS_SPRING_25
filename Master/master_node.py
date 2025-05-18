@@ -22,10 +22,14 @@ def master_process():
         # Initialization of task queue
         #app.start()
         # Implementation of database connection
+        try:
+            r = redis.StrictRedis(host="156.214.12.136", port=6379, db=0)
+            r_results = redis.StrictRedis(host="156.214.12.136", port=6379, db=1)
+            r.ping()
+            print("From master redis is live")
 
-        r = redis.StrictRedis(host="197.53.138.226", port=6379, db=0)
-        r_results = redis.StrictRedis(host="197.53.138.226", port=6379, db=1)
-
+        except Exception as e:
+            print("redis didn't work")
         r.select(0)  # Explicitly select the correct DB
 
 
