@@ -19,7 +19,7 @@ def crawler_process():
     rank = comm.Get_rank()
     size = comm.Get_size()
     crawler_nodes = size // 2
-    cursor = conn.cursor()
+    cursor = conn.cursor(buffered=True)
     robot_parsers = {}
     user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
 
@@ -28,18 +28,31 @@ def crawler_process():
     if ((rank != 0) and (rank <= crawler_nodes)):
         logging.info(f"Crawler node started with rank {rank} of {size}")
 
-        comm.send(rank, dest=0, tag=99)
-
+        try:
+            comm.send(rank, dest=0, tag=99)
+        except MPI.Exception as e:
+            if e.Get_error_class() == MPI.ERR_PROC_FAILED:
+                comm = comm.Shrink()
 
         while True:
             status = MPI.Status()
-            url_to_crawl = comm.recv(source=0, tag=0, status=status)
+            try:
+                url_to_crawl = comm.recv(source=0, tag=0, status=status)
+            except MPI.Exception as e:
+                if e.Get_error_class() == MPI.ERR_PROC_FAILED:
+                    comm = comm.Shrink()
+
             sql = "SELECT links, html FROM crawled_pages WHERE url= %s"
             cursor.execute(sql, (url_to_crawl, ))
             result = cursor.fetchone()
 
             if result:
-                comm.send(rank, dest=0, tag=99)
+                try:
+                    comm.send(rank, dest=0, tag=99)
+                except MPI.Exception as e:
+                    if e.Get_error_class() == MPI.ERR_PROC_FAILED:
+                        comm = comm.Shrink()
+                
                 continue
 
 
@@ -68,7 +81,11 @@ def crawler_process():
 
                 if not robot_parsers[base_url].can_fetch(user_agent, url_to_crawl):
                     logging.info(f"Crawler {rank}: Disallowed by robots.txt: {url_to_crawl}")
-                    comm.send(rank, dest=0, tag=99)
+                    try:
+                        comm.send(rank, dest=0, tag=99)
+                    except MPI.Exception as e:
+                        if e.Get_error_class() == MPI.ERR_PROC_FAILED:
+                            comm = comm.Shrink()
                     continue
 
                 headers = {'User-Agent': user_agent}
@@ -78,13 +95,22 @@ def crawler_process():
 
                 except requests.exceptions.Timeout as e:
                     logging.warning(f"Crawler {rank}: Timeout while fetching {url_to_crawl}: {e}")
-                    comm.send((rank,url_to_crawl), dest=0, tag=9)
+
+                    try:
+                        comm.send((rank,url_to_crawl), dest=0, tag=9)
+                    except MPI.Exception as e:
+                        if e.Get_error_class() == MPI.ERR_PROC_FAILED:
+                            comm = comm.Shrink()
                     continue
                 
                 except requests.exceptions.RequestException as e:
                     error_message = f"{type(e).__name__}: {str(e)}"
                     logging.warning(f"Crawler {rank}: Failed to fetch {url_to_crawl} due to {type(e).__name__}: {e}")
-                    comm.send((url_to_crawl, error_message, rank), dest=0, tag=999)
+                    try:
+                        comm.send((url_to_crawl, error_message, rank), dest=0, tag=999)
+                    except MPI.Exception as e:
+                        if e.Get_error_class() == MPI.ERR_PROC_FAILED:
+                            comm = comm.Shrink()
                     continue
 
                 
@@ -94,7 +120,12 @@ def crawler_process():
                 else:
                     error_message = f"{type(e).__name__}: {str(e)}"
                     logging.info(f"Crawler {rank} Failed to crawl: {url_to_crawl} ... Status: {response.status_code}")
-                    comm.send((url_to_crawl, error_message, rank), dest=0, tag=999)
+
+                    try:
+                        comm.send((url_to_crawl, error_message, rank), dest=0, tag=999)
+                    except MPI.Exception as e:
+                        if e.Get_error_class() == MPI.ERR_PROC_FAILED:
+                            comm = comm.Shrink()
                     continue
 
 
@@ -121,20 +152,41 @@ def crawler_process():
                 
                 extracted_urls = links
                 logging.info(f"Crawler {rank} crawled {url_to_crawl}, extracted {len(extracted_urls)} URLS.")
-                comm.send(extracted_urls, dest=0, tag = 1)
-
+                try:
+                    comm.send(extracted_urls, dest=0, tag = 1)
+                except MPI.Exception as e:
+                    if e.Get_error_class() == MPI.ERR_PROC_FAILED:
+                        comm = comm.Shrink()
                 # send content to the indexer available
-                indexers = comm.recv(source= 0 , tag=3)
+                try:
+                    indexers = comm.recv(source= 0 , tag=3)
+                except MPI.Exception as e:
+                    if e.Get_error_class() == MPI.ERR_PROC_FAILED:
+                        comm = comm.Shrink()
+                        
                 if indexers:
                     indexer = indexers.pop()
-                    comm.send((url_to_crawl, html_text), dest = indexer, tag = 2)
+                    try:
+                        comm.send((url_to_crawl, html_text), dest = indexer, tag = 2)
+                    except MPI.Exception as e:
+                        if e.Get_error_class() == MPI.ERR_PROC_FAILED:
+                            comm = comm.Shrink()
 
-                comm.send(rank, dest = 0, tag = 99)
-
+                try:
+                    comm.send(rank, dest = 0, tag = 99)
+                except MPI.Exception as e:
+                    if e.Get_error_class() == MPI.ERR_PROC_FAILED:
+                        comm = comm.Shrink()
 
             except Exception as e:
                 error_message = f"{type(e).__name__}: {str(e)}"
                 logging.error(f"crawler {rank} error crawling {url_to_crawl}: {str(e)}")
-                comm.send((url_to_crawl, error_message, rank), dest=0, tag=999)
+
+                try:
+                    comm.send((url_to_crawl, error_message, rank), dest=0, tag=999)
+                except MPI.Exception as e:
+                    if e.Get_error_class() == MPI.ERR_PROC_FAILED:
+                        comm = comm.Shrink()
+
 
         cursor.close()
